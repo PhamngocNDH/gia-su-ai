@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Gia Sư AI" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>Gia Sư AI</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body { margin: 0; background: #f0f4f8; display: flex; flex-direction: column; height: 100dvh; color: #1e293b; }
+    header { background: #2563eb; color: white; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 18px; }
+    #btn-new { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; }
+
+    .modes { display: flex; gap: 6px; padding: 8px 10px; background: white; border-bottom: 1px solid #e2e8f0; }
+    .mode-btn { flex: 1; padding: 10px 4px; border: 2px solid #cbd5e1; background: white; border-radius: 10px; font-weight: 600; font-size: 13px; color: #1e293b; }
+    .mode-btn.active[data-mode="lop1"] { background: #fef3c7; border-color: #f59e0b; color: #b45309; }
+    .mode-btn.active[data-mode="lop4"] { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
+    .mode-btn.active[data-mode="phuhuynh"] { background: #dcfce7; border-color: #22c55e; color: #15803d; }
+
+    #chat-box { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
+    .msg { max-width: 88%; padding: 12px 14px; border-radius: 16px; line-height: 1.5; font-size: 16px; white-space: pre-wrap; word-wrap: break-word; }
+    .msg.user { align-self: flex-end; background: #2563eb; color: white; border-bottom-right-radius: 4px; }
+    .msg.ai { align-self: flex-start; background: white; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .msg.err { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    .msg img { max-width: 100%; border-radius: 8px; margin-top: 6px; display: block; }
+    .speak-btn { margin-top: 8px; display: inline-block; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 8px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+
+    #preview-area { display: none; padding: 8px 14px; background: #e2e8f0; align-items: center; gap: 10px; }
+    #preview-img { height: 48px; border-radius: 6px; }
+
+    #rec-bar { display: none; padding: 10px 14px; background: #fee2e2; color: #b91c1c; font-weight: 600; font-size: 15px; align-items: center; gap: 10px; }
+    #rec-level { flex: 1; height: 8px; background: #fecaca; border-radius: 4px; overflow: hidden; }
+    #rec-level > div { height: 100%; width: 0; background: #dc2626; transition: width 0.08s; }
+
+    .voice-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; background: #f8fafc; font-size: 14px; border-top: 1px solid #e2e8f0; }
+    .controls { background: white; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e8f0; display: flex; gap: 6px; align-items: center; }
+    .icon-btn { width: 48px; height: 48px; border-radius: 50%; border: none; font-size: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    #btn-cam { background: #f1f5f9; }
+    #btn-mic { background: #ef4444; color: white; }
+    #btn-mic.listening { animation: pulse 1.2s infinite; background: #dc2626; }
+    #btn-send { background: #2563eb; color: white; border-radius: 12px; padding: 0 14px; height: 48px; border: none; font-weight: 600; flex-shrink: 0; font-size: 15px; }
+    button:disabled { opacity: 0.5; }
+    #text-input { flex: 1; min-width: 0; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 16px; outline: none; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); } 70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎓 Gia Sư AI Tại Nhà</h1>
+  <button id="btn-new" onclick="newTopic()">🆕 Bài mới</button>
+</header>
+
+<div class="modes">
+  <button class="mode-btn active" data-mode="lop1" onclick="switchMode('lop1')">🐥 Lớp 1</button>
+  <button class="mode-btn" data-mode="lop4" onclick="switchMode('lop4')">🚀 Lớp 4</button>
+  <button class="mode-btn" data-mode="phuhuynh" onclick="switchMode('phuhuynh')">👨‍👩‍👧 Phụ Huynh</button>
+</div>
+
+<div id="chat-box"></div>
+
+<div id="preview-area">
+  <img id="preview-img" src="" />
+  <span style="font-size:14px; flex:1;">Đã chọn ảnh bài tập</span>
+  <button onclick="clearImage()" style="border:none; background:#ef4444; color:white; border-radius:6px; padding:6px 12px;">Xóa</button>
+</div>
+
+<div id="rec-bar">
+  <span>🎙️ Cô đang nghe…</span>
+  <div id="rec-level"><div></div></div>
+  <span style="font-weight:400;font-size:13px">Nói xong bấm 🎤</span>
+</div>
+
+<div class="voice-bar">
+  <label><input type="checkbox" id="auto-speak" checked /> Tự động đọc</label>
+  <button onclick="stopSpeak()" style="border:none; background:none; color:#ef4444; font-weight:600; font-size:14px;">⏹ Dừng đọc</button>
+</div>
+
+<div class="controls">
+  <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleImage(event)" />
+  <button id="btn-cam" class="icon-btn" onclick="document.getElementById('file-input').click()">📷</button>
+  <button id="btn-mic" class="icon-btn" onclick="toggleMic()">🎤</button>
+  <input type="text" id="text-input" placeholder="Bấm 🎤 để nói, hoặc gõ câu hỏi..." onkeydown="if(event.key==='Enter' && !event.isComposing) sendMessage()" />
+  <button id="btn-send" onclick="sendMessage()">Gửi</button>
+</div>
+
+<script>
+  const API = 'https://script.google.com/macros/s/AKfycbwcQ36IEoQLtDWOrDw-QlCzbYzENZDlsK5h_VE_-IUCBbZocEy-7bemZuTtTXmmV7VJ2A/exec';
+
+  let currentMode = 'lop1';
+  let imageBase64 = null;
+  let history = [];
+  let busy = false;
+
+  const GREETINGS = {
+    lop1: "Chào con yêu! Con bấm nút Micro 🎤 rồi nói câu hỏi, nói xong bấm 🎤 lần nữa nhé. Hoặc bố mẹ bấm máy ảnh 📷 chụp bài tập gửi cô.",
+    lop4: "Chào con! Có bài toán hay bài tiếng Việt nào khó, bấm 🎤 kể cho cô nghe hoặc chụp ảnh 📷 bài tập nhé.",
+    phuhuynh: "Chế độ Phụ huynh đã bật. Bố mẹ chụp ảnh bài tập hoặc nhập đề để xem đáp án và cách giảng nhé."
+  };
+
+  // ================= Gọi API =================
+  async function api(body) {
+    const r = await fetch(API, { method: 'POST', body: JSON.stringify(body) }); // text/plain: không cần preflight
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Lỗi không rõ');
+    return j;
+  }
+
+  // ================= Giao diện =================
+  function switchMode(mode) {
+    if (mode === currentMode) return;
+    currentMode = mode;
+    history = [];
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    addMessage(GREETINGS[mode], 'ai');
+  }
+
+  function newTopic() {
+    history = [];
+    stopSpeak();
+    document.getElementById('chat-box').innerHTML = '';
+    addMessage(GREETINGS[currentMode], 'ai');
+  }
+
+  function cleanMd(t) {
+    return t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s*/gm, '').replace(/^\s*[\*\-]\s+/gm, '• ').replace(/[*_`#]/g, '');
+  }
+
+  function addMessage(text, sender, imgSrc = null, showSpeakBtn = false) {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = `msg ${sender}`;
+    const t = document.createElement('div');
+    t.textContent = text;
+    div.appendChild(t);
+    if (imgSrc) { const img = document.createElement('img'); img.src = imgSrc; div.appendChild(img); }
+    if (showSpeakBtn) {
+      const btn = document.createElement('button');
+      btn.className = 'speak-btn';
+      btn.textContent = '🔊 Nghe lại';
+      btn.onclick = () => { unlockAudio(); speakText(text, true); };
+      div.appendChild(btn);
+    }
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div;
+  }
+
+  function setBusy(v) {
+    busy = v;
+    document.getElementById('btn-send').disabled = v;
+    document.getElementById('btn-mic').disabled = v;
+  }
+
+  // ================= Ảnh =================
+  function handleImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.82);
+        document.getElementById('preview-img').src = compressed;
+        document.getElementById('preview-area').style.display = 'flex';
+        imageBase64 = compressed.split(',')[1];
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    imageBase64 = null;
+    document.getElementById('file-input').value = '';
+    document.getElementById('preview-area').style.display = 'none';
+  }
+
+  // ================= Đọc thành tiếng (giọng Gemini, phát qua <audio>) =================
+  // iPhone chỉ cho phát âm thanh nếu thẻ audio đã được "mở" bằng một lần bấm.
+  const player = new Audio();
+  player.setAttribute('playsinline', '');
+  const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    try { player.src = SILENT; const p = player.play(); if (p) p.catch(() => {}); audioUnlocked = true; } catch (e) {}
+  }
+
+  let speakToken = 0;
+  let queue = [];
+  function stopSpeak() {
+    speakToken++;
+    queue = [];
+    try { player.pause(); } catch (e) {}
+  }
+
+  function b64ToBytes(b64) {
+    const bin = atob(b64); const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  }
+  // Gemini có model trả WAV sẵn, có model trả PCM thô 24 kHz → bọc thành WAV
+  function toWavUrl(b64) {
+    const pcm = b64ToBytes(b64);
+    if (pcm[0] === 0x52 && pcm[1] === 0x49 && pcm[2] === 0x46 && pcm[3] === 0x46) return URL.createObjectURL(new Blob([pcm], { type: 'audio/wav' }));
+    const rate = 24000, h = new ArrayBuffer(44), v = new DataView(h);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + pcm.length, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, pcm.length, true);
+    return URL.createObjectURL(new Blob([h, pcm], { type: 'audio/wav' }));
+  }
+
+  // Chia đoạn ~250 ký tự theo câu: đoạn đầu ngắn để nghe sớm, các đoạn sau tải trước
+  function splitChunks(text) {
+    const sents = text.replace(/•/g, '').match(/[^.!?\n]+[.!?]*/g) || [text];
+    const out = []; let cur = '';
+    sents.map(s => s.trim()).filter(Boolean).forEach(s => {
+      const lim = out.length === 0 ? 120 : 260;
+      if ((cur + ' ' + s).length > lim && cur) { out.push(cur); cur = s; } else cur = cur ? cur + ' ' + s : s;
+    });
+    if (cur) out.push(cur);
+    return out;
+  }
+
+  async function speakText(text, force = false) {
+    if (!force && !document.getElementById('auto-speak').checked) return;
+    stopSpeak();
+    const my = speakToken;
+    const chunks = splitChunks(text);
+    // tải tối đa 2 đoạn song song, phát lần lượt
+    const jobs = chunks.map(() => null);
+    const load = i => jobs[i] || (jobs[i] = api({ action: 'tts', text: chunks[i] }).then(j => toWavUrl(j.pcm)));
+    for (let i = 0; i < chunks.length; i++) {
+      if (my !== speakToken) return;
+      let url;
+      try { load(i); if (i + 1 < chunks.length) load(i + 1); url = await jobs[i]; }
+      catch (e) { if (my === speakToken) fallbackSpeak(chunks.slice(i).join(' ')); return; }
+      if (my !== speakToken) return;
+      await new Promise(res => {
+        player.onended = res; player.onerror = res;
+        player.src = url;
+        const p = player.play();
+        if (p) p.catch(() => res());
+      });
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  // Dự phòng khi máy chủ không đọc được: dùng giọng có sẵn của máy
+  function fallbackSpeak(text) {
+    if (!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'vi-VN';
+    window.speechSynthesis.speak(u);
+  }
+
+  // ================= Micro: ghi âm WAV 16 kHz, gửi cho Gemini nghe =================
+  let rec = null; // {stream, ctx, node, src, chunks[], rate, timer, silenceAt, heard}
+  async function toggleMic() {
+    unlockAudio();
+    if (rec) { stopRecording(true); return; }
+    if (busy) return;
+    stopSpeak();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      addMessage("Máy này chưa cho dùng Micro trong trình duyệt. Con bấm vào ô nhập chữ rồi dùng nút micro trên bàn phím nhé.", 'ai');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      await ctx.resume();
+      const src = ctx.createMediaStreamSource(stream);
+      const node = ctx.createScriptProcessor(4096, 1, 1);
+      rec = { stream, ctx, src, node, chunks: [], rate: ctx.sampleRate, start: Date.now(), heard: false, quietSince: 0 };
+      node.onaudioprocess = ev => {
+        if (!rec) return;
+        const d = ev.inputBuffer.getChannelData(0);
+        rec.chunks.push(new Float32Array(d));
+        let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
+        const rms = Math.sqrt(s / (d.length / 4));
+        document.querySelector('#rec-level > div').style.width = Math.min(100, rms * 600) + '%';
+        const now = Date.now();
+        if (rms > 0.03) { rec.heard = true; rec.quietSince = 0; }
+        else if (rec.heard) { rec.quietSince = rec.quietSince || now; if (now - rec.quietSince > 1800) stopRecording(true); }
+        if (now - rec.start > 30000) stopRecording(true);           // tối đa 30 giây
+        if (!rec.heard && now - rec.start > 8000) stopRecording(false, true); // 8 giây im lặng
+      };
+      src.connect(node); node.connect(ctx.destination);
+      document.getElementById('btn-mic').classList.add('listening');
+      document.getElementById('rec-bar').style.display = 'flex';
+    } catch (e) {
+      addMessage("Chưa mở được Micro. Nếu máy hỏi quyền dùng micro thì con bấm \"Cho phép\" nhé, rồi bấm 🎤 lại.", 'ai', null, false).classList.add('err');
+    }
+  }
+
+  function stopRecording(send, silent) {
+    if (!rec) return;
+    const r = rec; rec = null;
+    try { r.node.disconnect(); r.src.disconnect(); } catch (e) {}
+    r.stream.getTracks().forEach(t => t.stop());
+    try { r.ctx.close(); } catch (e) {}
+    document.getElementById('btn-mic').classList.remove('listening');
+    document.getElementById('rec-bar').style.display = 'none';
+    if (silent) { addMessage("Cô chưa nghe thấy gì, con bấm 🎤 rồi nói to hơn nhé.", 'ai'); return; }
+    if (!send || !r.heard) return;
+    sendMessage(encodeWav16k(r.chunks, r.rate));
+  }
+
+  function encodeWav16k(chunks, inRate) {
+    let len = 0; chunks.forEach(c => len += c.length);
+    const all = new Float32Array(len); let o = 0;
+    chunks.forEach(c => { all.set(c, o); o += c.length; });
+    const outRate = 16000, ratio = inRate / outRate, n = Math.floor(all.length / ratio);
+    const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (p, s) => { for (let i = 0; i < s.length; i++) v.setUint8(p + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) {
+      // trung bình các mẫu trong khoảng để giảm nhiễu khi hạ tần số
+      const a = Math.floor(i * ratio), b = Math.min(all.length, Math.floor((i + 1) * ratio));
+      let s = 0; for (let k = a; k < b; k++) s += all[k];
+      const x = Math.max(-1, Math.min(1, s / Math.max(1, b - a)));
+      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+    }
+    const bytes = new Uint8Array(buf); let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+
+  // ================= Gửi câu hỏi =================
+  async function sendMessage(audioBase64) {
+    if (typeof audioBase64 !== 'string') audioBase64 = null;
+    if (busy) return;
+    unlockAudio();
+    const input = document.getElementById('text-input');
+    const text = input.value.trim();
+    if (!text && !imageBase64 && !audioBase64) return;
+    stopSpeak();
+
+    const previewSrc = imageBase64 ? document.getElementById('preview-img').src : null;
+    const sendImg = imageBase64;
+    const modeAtSend = currentMode;
+
+    const userDiv = addMessage(audioBase64 ? '🎤 …' : (text || "📷 (Đã gửi ảnh bài tập)"), 'user', previewSrc);
+    input.value = '';
+    clearImage();
+    setBusy(true);
+    const loadingDiv = addMessage(audioBase64 ? "Cô đang nghe con nói…" : "Cô đang suy nghĩ…", 'ai');
+
+    try {
+      const j = await api({ mode: modeAtSend, text, imageBase64: sendImg, imageMime: 'image/jpeg',
+                            audioBase64, audioMime: 'audio/wav', history });
+      loadingDiv.remove();
+      let userText = text;
+      if (audioBase64) {
+        userText = (j.cau_hoi || '').trim() + (text ? ' ' + text : '');
+        userDiv.firstChild.textContent = '🎤 ' + (userText || '(cô chưa nghe rõ)');
+      }
+      if (modeAtSend === currentMode) {
+        history.push({ role: 'user', text: userText || (sendImg ? '' : '(câu hỏi bằng giọng nói)'), imageBase64: sendImg, imageMime: 'image/jpeg' });
+        history.push({ role: 'model', text: j.tra_loi });
+        let soAnh = 0;
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].imageBase64 && ++soAnh > 2) { delete history[i].imageBase64; history[i].text = (history[i].text || '') + ' (ảnh bài tập đã gửi trước đó)'; }
+        }
+        if (history.length > 12) history = history.slice(-12);
+      }
+      const clean = cleanMd(j.tra_loi);
+      addMessage(clean, 'ai', null, true);
+      speakText(clean);
+    } catch (err) {
+      loadingDiv.classList.add('err');
+      loadingDiv.firstChild.textContent = "⚠️ " + (err && err.message ? err.message : err) + (/fetch|network|Load failed/i.test(String(err)) ? ' (mạng yếu? thử lại nhé)' : '');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  addMessage(GREETINGS.lop1, 'ai');
+</script>
+</body>
+</html>

@@ -201,8 +201,13 @@
   let limits = store.get('gs_limits', { phutMoiLan: 30, phutNghi: 15 });
 
   // ================= Gọi API =================
+  // Đường nhanh: Cloudflare Worker gọi thẳng Gemini. Worker lỗi mạng thì quay về Apps Script.
+  const WORKER = 'https://gia-su-ai.giasu-ai.workers.dev';
   async function api(body) {
-    const r = await fetch(API, { method: 'POST', body: JSON.stringify(body) }); // text/plain: không cần preflight
+    const opt = { method: 'POST', body: JSON.stringify(body) }; // text/plain: không cần preflight
+    let r;
+    try { r = await fetch(WORKER, opt); if (!r.ok) throw new Error('worker ' + r.status); }
+    catch (e) { r = await fetch(API, opt); }
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'Lỗi không rõ');
     return j;

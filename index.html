@@ -162,7 +162,6 @@
 </div>
 
 <script>
-  const API = 'https://script.google.com/macros/s/AKfycbwcQ36IEoQLtDWOrDw-QlCzbYzENZDlsK5h_VE_-IUCBbZocEy-7bemZuTtTXmmV7VJ2A/exec';
 
   const BE = { lop1: { ten: 'Lộc', khoa: 'loc' }, lop4: { ten: 'Phát', khoa: 'phat' } };
   const GREETINGS = {
@@ -201,13 +200,10 @@
   let limits = store.get('gs_limits', { phutMoiLan: 30, phutNghi: 15 });
 
   // ================= Gọi API =================
-  // Đường nhanh: Cloudflare Worker gọi thẳng Gemini. Worker lỗi mạng thì quay về Apps Script.
+  // Toàn bộ máy chủ chạy trên Cloudflare Worker (Apps Script cũ không dùng nữa)
   const WORKER = 'https://gia-su-ai.giasu-ai.workers.dev';
   async function api(body) {
-    const opt = { method: 'POST', body: JSON.stringify(body) }; // text/plain: không cần preflight
-    let r;
-    try { r = await fetch(WORKER, opt); if (!r.ok) throw new Error('worker ' + r.status); }
-    catch (e) { r = await fetch(API, opt); }
+    const r = await fetch(WORKER, { method: 'POST', body: JSON.stringify(body) }); // text/plain: không cần preflight
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'Lỗi không rõ');
     return j;
@@ -498,12 +494,39 @@
   function unlockAudio() {
     if (audioUnlocked) return;
     try { player.src = SILENT; const p = player.play(); if (p) p.catch(() => {}); audioUnlocked = true; } catch (e) {}
+    // Mở luôn giọng máy (iPhone chỉ cho đọc nếu lần đầu nằm trong một lần bấm)
+    try { if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
+  }
+
+  // Gemini hết lượt tạo giọng trong ngày → dùng giọng tiếng Việt của máy tới hết ngày (giữ một giọng suốt ngày)
+  const ngayNay = () => new Date().toDateString();
+  const dungGiongMay = () => store.get('gs_giong_may', '') === ngayNay();
+  function batGiongMay() { store.set('gs_giong_may', ngayNay()); }
+  let viVoice = null;
+  function pickVoice() {
+    try {
+      const vs = speechSynthesis.getVoices();
+      viVoice = vs.find(v => /^vi/i.test(v.lang) && /linh|premium|enhanced/i.test(v.name)) || vs.find(v => /^vi/i.test(v.lang)) || null;
+    } catch (e) {}
+  }
+  if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+  function speakDevice(text, my) {
+    return new Promise(res => {
+      if (!('speechSynthesis' in window) || my !== speakToken) return res();
+      setStatus('🔊 Cô đang nói…');
+      const u = new SpeechSynthesisUtterance(text.replace(/•/g, ''));
+      u.lang = 'vi-VN'; if (viVoice) u.voice = viVoice; u.rate = 1.0;
+      u.onend = res; u.onerror = res;
+      speechSynthesis.speak(u);
+      const t = setInterval(() => { if (my !== speakToken) { clearInterval(t); res(); } else if (!speechSynthesis.speaking && !speechSynthesis.pending) { clearInterval(t); res(); } }, 300);
+    });
   }
 
   let speakToken = 0;
   function stopSpeak() {
     speakToken++;
     try { player.pause(); } catch (e) {}
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
     setStatus('');
   }
 
@@ -569,6 +592,7 @@
     stopSpeak();
     const my = speakToken;
     if (preB64) { await playUrl(toWavUrl(preB64), my); if (my === speakToken) setStatus(''); return; }
+    if (dungGiongMay()) { await speakDevice(text, my); if (my === speakToken) setStatus(''); return; }
     const chunks = splitChunks(text);
     const jobs = chunks.map(() => null);
     const load = i => jobs[i] || (jobs[i] = api({ action: 'tts', text: chunks[i] }).then(j => toWavUrl(j.pcm)));
@@ -577,7 +601,11 @@
       if (my !== speakToken) return;
       let url;
       try { load(i); if (i + 1 < chunks.length) load(i + 1); url = await jobs[i]; }
-      catch (e) { if (my === speakToken) setStatus('⚠️ Chưa đọc được, bấm 🔊 Nghe lại nhé', 4000); return; }
+      catch (e) {
+        if (my !== speakToken) return;
+        if (/HET_GIONG/.test(e.message)) { batGiongMay(); await speakDevice(chunks.slice(i).join(' '), my); if (my === speakToken) setStatus(''); return; }
+        setStatus('⚠️ Chưa đọc được, bấm 🔊 Nghe lại nhé', 4000); return;
+      }
       await playUrl(url, my);
     }
     if (my === speakToken) setStatus('');
@@ -595,6 +623,7 @@
   }
   let lastFiller = -1;
   function playFiller() {
+    if (dungGiongMay()) { setStatus('🤔 Cô đang suy nghĩ…'); return; } // giọng máy: bỏ câu đệm để khỏi lẫn 2 giọng
     const ready = FILLERS.map((_, i) => i).filter(i => store.get(fillerKey(i), null));
     if (!ready.length) return;
     let i = ready[Math.floor(Math.random() * ready.length)];
@@ -779,6 +808,7 @@
                             audioBase64, audioMime: 'audio/wav', history, docLuon: autoSpeak,
                             mk: modeAtSend === 'phuhuynh' ? parentPw : undefined });
       loadingDiv.remove();
+      if (j.hetGiong) batGiongMay();
       if (!j.pcm) setStatus('');
       let userText = text;
       if (audioBase64) {

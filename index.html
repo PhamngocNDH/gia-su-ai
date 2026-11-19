@@ -4,28 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Gia Sư AI" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="theme-color" content="#2563eb" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
   <title>Gia Sư AI</title>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; }
     body { margin: 0; background: #f0f4f8; display: flex; flex-direction: column; height: 100dvh; color: #1e293b; }
-    header { background: #2563eb; color: white; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { margin: 0; font-size: 18px; }
+    header { background: #2563eb; color: white; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; display: flex; align-items: center; gap: 8px; }
+    header h1 { margin: 0; font-size: 18px; flex: 1; }
+    #stars { background: rgba(255,255,255,0.2); border-radius: 999px; padding: 4px 10px; font-weight: 700; font-size: 14px; }
+    #stars.pop { animation: pop 0.6s; }
+    @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.5); background: #fbbf24; } 100% { transform: scale(1); } }
     #btn-new { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; }
 
-    .modes { display: flex; gap: 6px; padding: 8px 10px; background: white; border-bottom: 1px solid #e2e8f0; }
-    .mode-btn { flex: 1; padding: 10px 4px; border: 2px solid #cbd5e1; background: white; border-radius: 10px; font-weight: 600; font-size: 13px; color: #1e293b; }
+    .modes { display: flex; gap: 6px; padding: 8px 10px 4px; background: white; }
+    .mode-btn { flex: 1; padding: 9px 2px; border: 2px solid #cbd5e1; background: white; border-radius: 10px; font-weight: 600; font-size: 13px; color: #1e293b; }
     .mode-btn.active[data-mode="lop1"] { background: #fef3c7; border-color: #f59e0b; color: #b45309; }
     .mode-btn.active[data-mode="lop4"] { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
     .mode-btn.active[data-mode="phuhuynh"] { background: #dcfce7; border-color: #22c55e; color: #15803d; }
+    #chips { display: flex; gap: 6px; padding: 4px 10px 8px; background: white; border-bottom: 1px solid #e2e8f0; overflow-x: auto; scrollbar-width: none; }
+    #chips::-webkit-scrollbar { display: none; }
+    .chip { flex-shrink: 0; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 999px; padding: 7px 12px; font-size: 14px; font-weight: 600; color: #334155; }
 
     #chat-box { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
     .msg { max-width: 88%; padding: 12px 14px; border-radius: 16px; line-height: 1.5; font-size: 16px; white-space: pre-wrap; word-wrap: break-word; }
     .msg.user { align-self: flex-end; background: #2563eb; color: white; border-bottom-right-radius: 4px; }
     .msg.ai { align-self: flex-start; background: white; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     .msg.err { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    .msg.star { border-color: #fcd34d; background: #fffbeb; }
     .msg img { max-width: 100%; border-radius: 8px; margin-top: 6px; display: block; }
     .speak-btn { margin-top: 8px; display: inline-block; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 8px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
 
@@ -34,11 +46,6 @@
 
     #rec-bar { display: none; padding: 10px 14px; background: #fee2e2; color: #b91c1c; font-weight: 600; font-size: 15px; align-items: center; gap: 10px; }
     #rec-bar.status { background: #dbeafe; color: #1d4ed8; }
-    #pw-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); align-items: center; justify-content: center; z-index: 10; padding: 16px; }
-    .pw-box { background: white; border-radius: 16px; padding: 18px; width: 100%; max-width: 340px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
-    #pw-input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 10px; outline: none; }
-    .pw-box button { border: none; border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 600; }
-    #btn-mic.convo { background: #475569; }
     #rec-level { flex: 1; height: 8px; background: #fecaca; border-radius: 4px; overflow: hidden; }
     #rec-level > div { height: 100%; width: 0; background: #dc2626; transition: width 0.08s; }
 
@@ -48,37 +55,84 @@
     #btn-cam { background: #f1f5f9; }
     #btn-mic { background: #ef4444; color: white; }
     #btn-mic.listening { animation: pulse 1.2s infinite; background: #dc2626; }
+    #btn-mic.convo { background: #475569; }
     #btn-send { background: #2563eb; color: white; border-radius: 12px; padding: 0 14px; height: 48px; border: none; font-weight: 600; flex-shrink: 0; font-size: 15px; }
     button:disabled { opacity: 0.5; }
     #text-input { flex: 1; min-width: 0; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 16px; outline: none; }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); } 70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+    .box { background: white; border-radius: 16px; padding: 18px; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); max-height: 90dvh; overflow-y: auto; }
+    .box h3 { margin: 0 0 12px; font-size: 17px; }
+    .box label { display: block; font-size: 14px; font-weight: 600; margin: 10px 0 4px; }
+    .box input, .box select { width: 100%; padding: 11px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 10px; outline: none; background: white; }
+    .box .row { display: flex; gap: 8px; margin-top: 14px; }
+    .box .row button { flex: 1; border: none; border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 600; }
+    .btn-gray { background: #e2e8f0; color: #1e293b; }
+    .btn-green { background: #16a34a; color: white; }
+    #lock-overlay { background: linear-gradient(160deg, #1e3a8a, #0f766e); z-index: 20; flex-direction: column; color: white; text-align: center; }
+    #lock-overlay .big { font-size: 64px; }
+    #lock-overlay p { font-size: 20px; line-height: 1.5; margin: 12px 0; }
+    #lock-count { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    #lock-overlay button { margin-top: 30px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 10px; padding: 10px 16px; font-size: 14px; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>🎓 Gia Sư AI Tại Nhà</h1>
+  <h1>🎓 Gia Sư AI</h1>
+  <span id="stars">⭐ 0</span>
   <button id="btn-new" onclick="newTopic()">🆕 Bài mới</button>
 </header>
 
 <div class="modes">
-  <button class="mode-btn active" data-mode="lop1" onclick="switchMode('lop1')">🐥 Lớp 1</button>
-  <button class="mode-btn" data-mode="lop4" onclick="switchMode('lop4')">🚀 Lớp 4</button>
-  <button class="mode-btn" data-mode="phuhuynh" onclick="switchMode('phuhuynh')">👨‍👩‍👧 Phụ Huynh</button>
+  <button class="mode-btn active" data-mode="lop1" onclick="switchMode('lop1')">🐥 Lộc · Lớp 1</button>
+  <button class="mode-btn" data-mode="lop4" onclick="switchMode('lop4')">🚀 Phát · Lớp 4</button>
+  <button class="mode-btn" data-mode="phuhuynh" onclick="switchMode('phuhuynh')">👨‍👩‍👦 Phụ huynh</button>
 </div>
+<div id="chips"></div>
 
 <div id="chat-box"></div>
 
-<div id="pw-overlay">
-  <div class="pw-box">
-    <div id="pw-title" style="font-weight:700;font-size:17px;margin-bottom:10px"></div>
+<!-- Mật khẩu phụ huynh -->
+<div id="pw-overlay" class="overlay">
+  <div class="box">
+    <h3 id="pw-title"></h3>
     <input id="pw-input" type="password" autocomplete="off" placeholder="Nhập mật khẩu" />
     <div id="pw-msg" style="font-size:13px;color:#b91c1c;min-height:18px;margin:6px 0"></div>
-    <div style="display:flex;gap:8px">
-      <button id="pw-cancel" style="flex:1;background:#e2e8f0;color:#1e293b">Hủy</button>
-      <button id="pw-ok" style="flex:1;background:#16a34a;color:white">Mở</button>
+    <div class="row">
+      <button id="pw-cancel" class="btn-gray">Hủy</button>
+      <button id="pw-ok" class="btn-green">Mở</button>
     </div>
   </div>
+</div>
+
+<!-- Cài đặt (phụ huynh) -->
+<div id="set-overlay" class="overlay">
+  <div class="box">
+    <h3>⚙️ Cài đặt</h3>
+    <label>Bộ sách của Lộc (lớp 1)</label>
+    <select id="set-sachLoc"></select>
+    <label>Bộ sách của Phát (lớp 4)</label>
+    <select id="set-sachPhat"></select>
+    <label>Mỗi lần học tối đa (phút, 0 = không giới hạn)</label>
+    <input id="set-phutMoiLan" type="number" inputmode="numeric" min="0" max="180" />
+    <label>Nghỉ mắt bao lâu thì được học tiếp (phút)</label>
+    <input id="set-phutNghi" type="number" inputmode="numeric" min="1" max="120" />
+    <div id="set-msg" style="font-size:13px;min-height:18px;margin-top:8px"></div>
+    <div class="row">
+      <button class="btn-gray" onclick="closeSettings()">Đóng</button>
+      <button class="btn-green" id="set-save" onclick="saveSettings()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nghỉ mắt -->
+<div id="lock-overlay" class="overlay">
+  <div class="big">😴</div>
+  <p id="lock-text">Con học giỏi lắm rồi!<br>Giờ con nghỉ mắt một lát nhé.</p>
+  <div id="lock-count">15:00</div>
+  <button onclick="parentUnlock()">🔒 Bố mẹ mở khóa</button>
 </div>
 
 <div id="preview-area">
@@ -109,16 +163,41 @@
 <script>
   const API = 'https://script.google.com/macros/s/AKfycbwcQ36IEoQLtDWOrDw-QlCzbYzENZDlsK5h_VE_-IUCBbZocEy-7bemZuTtTXmmV7VJ2A/exec';
 
+  const BE = { lop1: { ten: 'Lộc', khoa: 'loc' }, lop4: { ten: 'Phát', khoa: 'phat' } };
+  const GREETINGS = {
+    lop1: "Chào Lộc! Con bấm 🎤 một lần rồi cứ thế nói chuyện với cô nhé, muốn dừng thì bấm 🛑. Con cũng có thể chọn 📖 Luyện đọc, 🔤 Ghép vần hoặc 🧮 Ôn toán ở phía trên.",
+    lop4: "Chào Phát! Bấm 🎤 để nói chuyện với cô, chụp 📷 bài tập, hoặc chọn 🧮 Ôn toán, 📚 Ôn tiếng Việt, ✍️ Chấm văn ở phía trên nhé.",
+    phuhuynh: "Chế độ Phụ huynh đã bật. Bố mẹ chụp ảnh bài tập hoặc nhập đề để xem đáp án và cách giảng. Bấm ⚙️ Cài đặt để chọn bộ sách và giới hạn thời gian học, 📋 Nhật ký để xem hôm nay các con hỏi gì."
+  };
+  const CHIPS = {
+    lop1: [
+      { t: '📖 Luyện đọc', say: 'Cô ơi, con muốn luyện đọc.' },
+      { t: '🔤 Ghép vần', say: 'Cô ơi, cho con chơi ghép vần.' },
+      { t: '🧮 Ôn toán', say: 'Cô ơi, cho con ôn toán 5 câu nhé.' }
+    ],
+    lop4: [
+      { t: '🧮 Ôn toán', say: 'Cô ơi, cho con ôn toán 5 câu nhé.' },
+      { t: '📚 Ôn tiếng Việt', say: 'Cô ơi, cho con ôn tiếng Việt 5 câu nhé.' },
+      { t: '✍️ Chấm văn', photo: 'Cô chấm giúp con bài văn này nhé.' }
+    ],
+    phuhuynh: [
+      { t: '⚙️ Cài đặt', fn: () => openSettings() },
+      { t: '📋 Nhật ký hôm nay', fn: () => showLog() }
+    ]
+  };
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
   let currentMode = 'lop1';
   let imageBase64 = null;
   let history = [];
   let busy = false;
-
-  const GREETINGS = {
-    lop1: "Chào con yêu! Con bấm nút Micro 🎤 một lần rồi cứ thế nói chuyện với cô nhé. Muốn dừng thì bấm 🛑. Bố mẹ có thể bấm máy ảnh 📷 chụp bài tập gửi cô.",
-    lop4: "Chào con! Có bài toán hay bài tiếng Việt nào khó, bấm 🎤 kể cho cô nghe hoặc chụp ảnh 📷 bài tập nhé.",
-    phuhuynh: "Chế độ Phụ huynh đã bật. Bố mẹ chụp ảnh bài tập hoặc nhập đề để xem đáp án và cách giảng nhé."
-  };
+  let parentPw = null;
+  let pendingPhotoText = null;
+  let limits = store.get('gs_limits', { phutMoiLan: 30, phutNghi: 15 });
 
   // ================= Gọi API =================
   async function api(body) {
@@ -128,70 +207,31 @@
     return j;
   }
 
-  // ================= Giao diện =================
-  // ===== Mật khẩu Phụ huynh (kiểm tra ở máy chủ; rời chế độ Phụ huynh là khóa lại) =====
-  let parentPw = null;
-  function askParentPw() {
-    return new Promise(resolve => {
-      const ov = document.getElementById('pw-overlay');
-      const inp = document.getElementById('pw-input');
-      const msg = document.getElementById('pw-msg');
-      const title = document.getElementById('pw-title');
-      let lanDau = false;
-      inp.value = ''; msg.textContent = '';
-      title.textContent = '🔒 Mật khẩu Phụ huynh';
-      ov.style.display = 'flex';
-      setTimeout(() => inp.focus(), 50);
-      const close = v => { ov.style.display = 'none'; ok.onclick = cancel.onclick = inp.onkeydown = null; resolve(v); };
-      const ok = document.getElementById('pw-ok'), cancel = document.getElementById('pw-cancel');
-      cancel.onclick = () => close(null);
-      inp.onkeydown = e => { if (e.key === 'Enter') ok.click(); };
-      ok.onclick = async () => {
-        const mk = inp.value;
-        if (!mk) return;
-        ok.disabled = true; msg.textContent = 'Đang kiểm tra…';
-        try {
-          if (lanDau) {
-            await api({ action: 'datMK', mk });
-            close(mk);
-          } else {
-            const j = await api({ action: 'kiemMK', mk });
-            if (j.chuaDat) {
-              lanDau = true;
-              title.textContent = '🔑 Đặt mật khẩu Phụ huynh (lần đầu)';
-              msg.textContent = 'Chưa có mật khẩu. Nhập mật khẩu mới (ít nhất 4 ký tự) rồi bấm Mở để lưu.';
-              inp.value = ''; inp.focus();
-            } else if (j.dung) close(mk);
-            else { msg.textContent = '❌ Sai mật khẩu.'; inp.value = ''; inp.focus(); }
-          }
-        } catch (e) { msg.textContent = '⚠️ ' + e.message; }
-        ok.disabled = false;
-      };
+  // ================= Giao diện chung =================
+  function renderChips() {
+    const box = document.getElementById('chips');
+    box.innerHTML = '';
+    CHIPS[currentMode].forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.textContent = c.t;
+      b.onclick = () => chipClick(c);
+      box.appendChild(b);
     });
   }
 
-  async function switchMode(mode) {
-    if (mode === currentMode) return;
-    if (mode === 'phuhuynh') {
-      endConversation(); stopSpeak();
-      const mk = await askParentPw();
-      if (!mk) return;
-      parentPw = mk;
-    } else {
-      parentPw = null; // rời chế độ Phụ huynh → khóa lại
-    }
-    currentMode = mode;
-    history = [];
-    endConversation(); stopSpeak();
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-    addMessage(GREETINGS[mode], 'ai');
+  function renderStars(pop) {
+    const el = document.getElementById('stars');
+    const be = BE[currentMode];
+    el.style.display = be ? '' : 'none';
+    if (!be) return;
+    el.textContent = '⭐ ' + store.get('gs_sao_' + be.khoa, 0);
+    if (pop) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
   }
 
-  function newTopic() {
-    history = [];
-    endConversation(); stopSpeak();
-    document.getElementById('chat-box').innerHTML = '';
-    addMessage(GREETINGS[currentMode], 'ai');
+  function addStar() {
+    const be = BE[currentMode]; if (!be) return;
+    store.set('gs_sao_' + be.khoa, store.get('gs_sao_' + be.khoa, 0) + 1);
+    renderStars(true);
   }
 
   function cleanMd(t) {
@@ -228,18 +268,170 @@
     document.getElementById('btn-mic').disabled = v && !convo; // đang trò chuyện vẫn bấm 🛑 được
   }
 
-  // Tạm thôi nghe (không gửi), giữ chế độ trò chuyện
-  function cancelListening() {
-    if (!listening) return;
-    listening = false; rec = null;
-    document.getElementById('rec-bar').style.display = 'none';
-    updateMicBtn();
+  // ================= Mật khẩu phụ huynh =================
+  function askParentPw(titleText) {
+    return new Promise(resolve => {
+      const ov = document.getElementById('pw-overlay');
+      const inp = document.getElementById('pw-input');
+      const msg = document.getElementById('pw-msg');
+      const title = document.getElementById('pw-title');
+      const ok = document.getElementById('pw-ok'), cancel = document.getElementById('pw-cancel');
+      let lanDau = false;
+      inp.value = ''; msg.textContent = '';
+      title.textContent = titleText || '🔒 Mật khẩu Phụ huynh';
+      ov.style.display = 'flex';
+      setTimeout(() => inp.focus(), 50);
+      const close = v => { ov.style.display = 'none'; ok.onclick = cancel.onclick = inp.onkeydown = null; resolve(v); };
+      cancel.onclick = () => close(null);
+      inp.onkeydown = e => { if (e.key === 'Enter') ok.click(); };
+      ok.onclick = async () => {
+        const mk = inp.value;
+        if (!mk) return;
+        ok.disabled = true; msg.textContent = 'Đang kiểm tra…';
+        try {
+          if (lanDau) { await api({ action: 'datMK', mk }); close(mk); }
+          else {
+            const j = await api({ action: 'kiemMK', mk });
+            if (j.chuaDat) {
+              lanDau = true;
+              title.textContent = '🔑 Đặt mật khẩu Phụ huynh (lần đầu)';
+              msg.textContent = 'Chưa có mật khẩu. Nhập mật khẩu mới (ít nhất 4 ký tự) rồi bấm Mở để lưu.';
+              inp.value = ''; inp.focus();
+            } else if (j.dung) close(mk);
+            else { msg.textContent = '❌ Sai mật khẩu.'; inp.value = ''; inp.focus(); }
+          }
+        } catch (e) { msg.textContent = '⚠️ ' + e.message; }
+        ok.disabled = false;
+      };
+    });
   }
+
+  async function switchMode(mode) {
+    if (mode === currentMode) return;
+    endConversation(); stopSpeak();
+    if (mode === 'phuhuynh') {
+      const mk = await askParentPw();
+      if (!mk) return;
+      parentPw = mk;
+    } else {
+      parentPw = null; // rời chế độ Phụ huynh → khóa lại
+      store.set('gs_mode', mode);
+    }
+    currentMode = mode;
+    history = [];
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    renderChips(); renderStars();
+    addMessage(GREETINGS[mode], 'ai');
+  }
+
+  function newTopic() {
+    history = [];
+    endConversation(); stopSpeak();
+    document.getElementById('chat-box').innerHTML = '';
+    addMessage(GREETINGS[currentMode], 'ai');
+  }
+
+  // ================= Cài đặt & nhật ký (phụ huynh) =================
+  async function openSettings() {
+    const ov = document.getElementById('set-overlay');
+    const msg = document.getElementById('set-msg');
+    msg.textContent = 'Đang tải…'; msg.style.color = '#64748b';
+    ov.style.display = 'flex';
+    try {
+      const j = await api({ action: 'caiDatDayDu', mk: parentPw });
+      ['sachLoc', 'sachPhat'].forEach(k => {
+        const sel = document.getElementById('set-' + k);
+        sel.innerHTML = '<option value="">— Chưa chọn —</option>' + j.boSach.map(s => `<option>${s}</option>`).join('');
+        sel.value = j.caiDat[k] || '';
+      });
+      document.getElementById('set-phutMoiLan').value = j.caiDat.phutMoiLan;
+      document.getElementById('set-phutNghi').value = j.caiDat.phutNghi;
+      msg.textContent = '';
+    } catch (e) { msg.textContent = '⚠️ ' + e.message; msg.style.color = '#b91c1c'; }
+  }
+  function closeSettings() { document.getElementById('set-overlay').style.display = 'none'; }
+  async function saveSettings() {
+    const msg = document.getElementById('set-msg'), btn = document.getElementById('set-save');
+    btn.disabled = true; msg.textContent = 'Đang lưu…'; msg.style.color = '#64748b';
+    try {
+      const caiDat = {};
+      ['sachLoc', 'sachPhat', 'phutMoiLan', 'phutNghi'].forEach(k => caiDat[k] = document.getElementById('set-' + k).value);
+      const j = await api({ action: 'luuCaiDat', mk: parentPw, caiDat });
+      limits = { phutMoiLan: j.caiDat.phutMoiLan, phutNghi: j.caiDat.phutNghi };
+      store.set('gs_limits', limits);
+      msg.textContent = '✅ Đã lưu.'; msg.style.color = '#15803d';
+      setTimeout(closeSettings, 700);
+    } catch (e) { msg.textContent = '⚠️ ' + e.message; msg.style.color = '#b91c1c'; }
+    btn.disabled = false;
+  }
+  async function showLog() {
+    const d = addMessage('Đang tải nhật ký hôm nay…', 'ai');
+    try {
+      const j = await api({ action: 'nhatKy', mk: parentPw });
+      if (!j.ds.length) { d.firstChild.textContent = '📋 Hôm nay các con chưa hỏi cô câu nào.'; return; }
+      const dem = {};
+      j.ds.forEach(m => dem[m.be] = (dem[m.be] || 0) + 1);
+      d.firstChild.textContent = '📋 Nhật ký hôm nay (' + Object.keys(dem).map(k => k + ' ' + dem[k] + ' câu').join(', ') + ')\n\n' +
+        j.ds.map(m => `${m.g} · ${m.be}${m.s ? ' ⭐' : ''}\nHỏi: ${m.h || '(ảnh)'}\nCô: ${m.a}`).join('\n\n');
+    } catch (e) { d.classList.add('err'); d.firstChild.textContent = '⚠️ ' + e.message; }
+  }
+
+  // ================= Giới hạn thời gian học (nghỉ mắt) =================
+  function phien() { return store.get('gs_phien', { start: 0, last: 0, lockUntil: 0 }); }
+  function isLocked() { return currentMode !== 'phuhuynh' && phien().lockUntil > Date.now(); }
+  // Gọi mỗi khi con thao tác; trả false nếu đang phải nghỉ
+  function hoatDong() {
+    if (currentMode === 'phuhuynh') return true;
+    const s = phien(), now = Date.now();
+    if (s.lockUntil > now) { showLock(); return false; }
+    if (!s.start || now - s.last > limits.phutNghi * 60000) s.start = now; // nghỉ đủ lâu → tính lần mới
+    s.last = now;
+    store.set('gs_phien', s);
+    return true;
+  }
+  function kiemTraHetGio() {
+    if (currentMode === 'phuhuynh') return;
+    const s = phien(), now = Date.now();
+    if (s.lockUntil > now) { showLock(); return; }
+    if (!limits.phutMoiLan || !s.start) return;
+    if (now - s.last > limits.phutNghi * 60000) return; // đang không học
+    if (now - s.start >= limits.phutMoiLan * 60000) {
+      s.lockUntil = now + limits.phutNghi * 60000; s.start = 0;
+      store.set('gs_phien', s);
+      endConversation(); stopSpeak();
+      const be = BE[currentMode];
+      speakText((be ? be.ten + ' ơi, ' : '') + 'con học giỏi lắm rồi. Giờ con nghỉ mắt ' + limits.phutNghi + ' phút, đi lại cho khỏe rồi quay lại học tiếp với cô nhé.', true);
+      showLock();
+    }
+  }
+  let lockTimer = null;
+  function showLock() {
+    const ov = document.getElementById('lock-overlay');
+    const be = BE[currentMode];
+    document.getElementById('lock-text').innerHTML = (be ? be.ten + ' ơi, con' : 'Con') + ' học giỏi lắm rồi!<br>Giờ con nghỉ mắt một lát nhé.';
+    ov.style.display = 'flex';
+    clearInterval(lockTimer);
+    const tick = () => {
+      const left = phien().lockUntil - Date.now();
+      if (left <= 0) { clearInterval(lockTimer); ov.style.display = 'none'; return; }
+      const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+      document.getElementById('lock-count').textContent = m + ':' + String(s).padStart(2, '0');
+    };
+    tick(); lockTimer = setInterval(tick, 1000);
+  }
+  async function parentUnlock() {
+    const mk = await askParentPw('🔒 Bố mẹ mở khóa cho con học tiếp');
+    if (!mk) return;
+    store.set('gs_phien', { start: 0, last: 0, lockUntil: 0 });
+    clearInterval(lockTimer);
+    document.getElementById('lock-overlay').style.display = 'none';
+  }
+  setInterval(kiemTraHetGio, 20000);
 
   // ================= Ảnh =================
   function handleImage(e) {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) { pendingPhotoText = null; return; }
     const reader = new FileReader();
     reader.onload = function(evt) {
       const img = new Image();
@@ -255,6 +447,11 @@
         document.getElementById('preview-img').src = compressed;
         document.getElementById('preview-area').style.display = 'flex';
         imageBase64 = compressed.split(',')[1];
+        if (pendingPhotoText) { // nút ✍️ Chấm văn: chụp xong gửi luôn
+          document.getElementById('text-input').value = pendingPhotoText;
+          pendingPhotoText = null;
+          sendMessage();
+        }
       };
       img.src = evt.target.result;
     };
@@ -265,6 +462,25 @@
     imageBase64 = null;
     document.getElementById('file-input').value = '';
     document.getElementById('preview-area').style.display = 'none';
+  }
+
+  // ================= Nút luyện tập =================
+  async function chipClick(c) {
+    if (c.fn) { c.fn(); return; }
+    unlockAudio();
+    if (busy || !hoatDong()) return;
+    if (c.photo) {
+      pendingPhotoText = c.photo;
+      document.getElementById('file-input').click();
+      return;
+    }
+    // Bật trò chuyện để con trả lời bằng giọng nói luôn
+    if (!convo && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try { await ensureMic(); convo = true; updateMicBtn(); } catch (e) {}
+    }
+    cancelListening();
+    document.getElementById('text-input').value = c.say;
+    sendMessage();
   }
 
   // ================= Đọc thành tiếng (giọng Gemini, phát qua <audio>) =================
@@ -279,12 +495,9 @@
   }
 
   let speakToken = 0;
-  let queue = [];
   function stopSpeak() {
     speakToken++;
-    queue = [];
     try { player.pause(); } catch (e) {}
-    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
     setStatus('');
   }
 
@@ -293,7 +506,7 @@
     const bar = document.getElementById('rec-bar');
     clearTimeout(statusTimer);
     if (!t) { if (!listening) bar.style.display = 'none'; return; }
-    if (listening) return; // đang nghe thì giữ thanh "Cô đang nghe"
+    if (listening) return;
     bar.style.display = 'flex';
     bar.className = 'status';
     document.getElementById('rec-text').textContent = t;
@@ -320,8 +533,7 @@
     return URL.createObjectURL(new Blob([h, pcm], { type: 'audio/wav' }));
   }
 
-  // Đọc cả câu trả lời trong MỘT lần tạo giọng để giữ đúng một giọng.
-  // Chỉ câu rất dài (chế độ Phụ huynh) mới chia theo đoạn văn, mỗi phần ≤ 900 ký tự.
+  // Một câu trả lời = một lần tạo giọng (giữ đúng một giọng); chỉ câu rất dài mới chia theo đoạn ≤ 900 ký tự
   function splitChunks(text) {
     text = text.replace(/•/g, '').trim();
     if (text.length <= 900) return [text];
@@ -334,11 +546,23 @@
     return out;
   }
 
-  // Trả về khi đọc xong (hoặc bị dừng)
-  async function speakText(text, force = false) {
+  function playUrl(url, my) {
+    return new Promise(res => {
+      if (my !== speakToken) return res();
+      setStatus('🔊 Cô đang nói…');
+      player.onended = res; player.onerror = res; player.onpause = res;
+      player.src = url;
+      const p = player.play();
+      if (p) p.catch(() => res());
+    }).then(() => URL.revokeObjectURL(url));
+  }
+
+  // Trả về khi đọc xong (hoặc bị dừng). preB64: âm thanh máy chủ đã tạo sẵn cho cả câu.
+  async function speakText(text, force = false, preB64 = null) {
     if (!force && !document.getElementById('auto-speak').checked) return;
     stopSpeak();
     const my = speakToken;
+    if (preB64) { await playUrl(toWavUrl(preB64), my); if (my === speakToken) setStatus(''); return; }
     const chunks = splitChunks(text);
     const jobs = chunks.map(() => null);
     const load = i => jobs[i] || (jobs[i] = api({ action: 'tts', text: chunks[i] }).then(j => toWavUrl(j.pcm)));
@@ -348,15 +572,7 @@
       let url;
       try { load(i); if (i + 1 < chunks.length) load(i + 1); url = await jobs[i]; }
       catch (e) { if (my === speakToken) setStatus('⚠️ Chưa đọc được, bấm 🔊 Nghe lại nhé', 4000); return; }
-      if (my !== speakToken) return;
-      setStatus('🔊 Cô đang nói…');
-      await new Promise(res => {
-        player.onended = res; player.onerror = res; player.onpause = res;
-        player.src = url;
-        const p = player.play();
-        if (p) p.catch(() => res());
-      });
-      URL.revokeObjectURL(url);
+      await playUrl(url, my);
     }
     if (my === speakToken) setStatus('');
   }
@@ -365,10 +581,10 @@
   // Bấm 🎤 một lần → cô nghe → con im ~1,5 giây là tự gửi → cô trả lời và đọc → cô tự nghe tiếp.
   // Micro mở suốt cuộc trò chuyện (chỉ hỏi quyền một lần), lúc cô đang nói thì bỏ qua tiếng thu được.
   // Bấm 🛑 để dừng; con im lặng 10 giây thì cô tự dừng.
-  let mic = null;        // {stream, ctx, src, node, rate}
-  let convo = false;     // đang ở chế độ trò chuyện
-  let listening = false; // đang thu câu nói của con
-  let rec = null;        // {chunks[], start, heard, quietSince, loudFrames}
+  let mic = null;
+  let convo = false;
+  let listening = false;
+  let rec = null;
 
   function updateMicBtn() {
     const b = document.getElementById('btn-mic');
@@ -408,12 +624,13 @@
     const now = Date.now();
     if (rms > 0.03) { rec.loudFrames++; if (rec.loudFrames >= 2) rec.heard = true; rec.quietSince = 0; }
     else if (rec.heard) { rec.quietSince = rec.quietSince || now; if (now - rec.quietSince > 1500) stopListening(true); }
-    if (listening && now - rec.start > 30000) stopListening(true);                 // nói tối đa 30 giây
-    if (listening && !rec.heard && now - rec.start > 10000) stopListening(false, true); // 10 giây im lặng
+    if (listening && now - rec.start > 30000) stopListening(true);
+    if (listening && !rec.heard && now - rec.start > 10000) stopListening(false, true);
   }
 
   function startListening() {
     if (!convo || !mic || busy) return;
+    if (isLocked()) { endConversation(); showLock(); return; }
     stopSpeak();
     try { mic.ctx.resume(); } catch (e) {}
     rec = { chunks: [], start: Date.now(), heard: false, quietSince: 0, loudFrames: 0 };
@@ -424,6 +641,13 @@
     document.getElementById('rec-text').textContent = '🎙️ Cô đang nghe con…';
     document.getElementById('rec-level').style.display = '';
     document.getElementById('rec-hint').textContent = 'Nói xong con im một chút';
+    updateMicBtn();
+  }
+
+  function cancelListening() {
+    if (!listening) return;
+    listening = false; rec = null;
+    document.getElementById('rec-bar').style.display = 'none';
     updateMicBtn();
   }
 
@@ -443,7 +667,7 @@
 
   function endConversation() {
     convo = false;
-    if (listening) { listening = false; rec = null; document.getElementById('rec-bar').style.display = 'none'; }
+    cancelListening();
     releaseMic();
     updateMicBtn();
   }
@@ -451,11 +675,10 @@
   async function toggleMic() {
     unlockAudio();
     if (convo) {
-      // Đang nghe mà con đã nói → gửi luôn; còn lại → dừng trò chuyện
       if (listening && rec && rec.heard) { stopListening(true); return; }
       endConversation(); stopSpeak(); return;
     }
-    if (busy) return;
+    if (busy || !hoatDong()) return;
     stopSpeak();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       addMessage("Máy này chưa cho dùng Micro trong trình duyệt. Con bấm vào ô nhập chữ rồi dùng nút micro trên bàn phím nhé.", 'ai');
@@ -471,7 +694,6 @@
     }
   }
 
-  // Sau khi cô trả lời xong (đã đọc xong) thì tự nghe tiếp
   function continueConversation(modeAtSend) {
     if (!convo) return;
     if (modeAtSend !== currentMode) { endConversation(); return; }
@@ -490,7 +712,6 @@
     v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
     w(36, 'data'); v.setUint32(40, n * 2, true);
     for (let i = 0; i < n; i++) {
-      // trung bình các mẫu trong khoảng để giảm nhiễu khi hạ tần số
       const a = Math.floor(i * ratio), b = Math.min(all.length, Math.floor((i + 1) * ratio));
       let s = 0; for (let k = a; k < b; k++) s += all[k];
       const x = Math.max(-1, Math.min(1, s / Math.max(1, b - a)));
@@ -509,12 +730,14 @@
     const input = document.getElementById('text-input');
     const text = input.value.trim();
     if (!text && !imageBase64 && !audioBase64) return;
-    if (!audioBase64) cancelListening(); // gõ chữ/gửi ảnh giữa lúc đang nghe
+    if (!hoatDong()) { endConversation(); return; }
+    if (!audioBase64) cancelListening();
     stopSpeak();
 
     const previewSrc = imageBase64 ? document.getElementById('preview-img').src : null;
     const sendImg = imageBase64;
     const modeAtSend = currentMode;
+    const autoSpeak = document.getElementById('auto-speak').checked;
 
     const userDiv = addMessage(audioBase64 ? '🎤 …' : (text || "📷 (Đã gửi ảnh bài tập)"), 'user', previewSrc);
     input.value = '';
@@ -524,7 +747,8 @@
 
     try {
       const j = await api({ mode: modeAtSend, text, imageBase64: sendImg, imageMime: 'image/jpeg',
-                            audioBase64, audioMime: 'audio/wav', history, mk: modeAtSend === 'phuhuynh' ? parentPw : undefined });
+                            audioBase64, audioMime: 'audio/wav', history, docLuon: autoSpeak,
+                            mk: modeAtSend === 'phuhuynh' ? parentPw : undefined });
       loadingDiv.remove();
       let userText = text;
       if (audioBase64) {
@@ -532,7 +756,7 @@
         userDiv.firstChild.textContent = '🎤 ' + (userText || '(cô chưa nghe rõ)');
       }
       if (modeAtSend === currentMode) {
-        history.push({ role: 'user', text: userText || (sendImg ? '' : '(câu hỏi bằng giọng nói)'), imageBase64: sendImg, imageMime: 'image/jpeg' });
+        history.push({ role: 'user', text: userText || (sendImg ? '' : '(con nói nhưng cô nghe không rõ)'), imageBase64: sendImg, imageMime: 'image/jpeg' });
         history.push({ role: 'model', text: j.tra_loi });
         let soAnh = 0;
         for (let i = history.length - 1; i >= 0; i--) {
@@ -541,9 +765,10 @@
         if (history.length > 12) history = history.slice(-12);
       }
       const clean = cleanMd(j.tra_loi);
-      addMessage(clean, 'ai', null, true);
+      const div = addMessage((j.sao ? '⭐ ' : '') + clean, 'ai', null, true);
+      if (j.sao && modeAtSend === currentMode) { div.classList.add('star'); addStar(); }
       setBusy(false);
-      await speakText(clean);
+      await speakText(clean, false, j.pcm || null);
       continueConversation(modeAtSend);
     } catch (err) {
       loadingDiv.classList.add('err');
@@ -553,7 +778,18 @@
     }
   }
 
-  addMessage(GREETINGS.lop1, 'ai');
+  // ================= Khởi động =================
+  (function init() {
+    const m = store.get('gs_mode', 'lop1');
+    if (m === 'lop4') {
+      currentMode = 'lop4';
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'lop4'));
+    }
+    renderChips(); renderStars();
+    addMessage(GREETINGS[currentMode], 'ai');
+    if (isLocked()) showLock();
+    api({ action: 'layCaiDat' }).then(j => { limits = { phutMoiLan: j.phutMoiLan, phutNghi: j.phutNghi }; store.set('gs_limits', limits); }).catch(() => {});
+  })();
 </script>
 </body>
 </html>

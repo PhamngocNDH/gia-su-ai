@@ -34,6 +34,10 @@
 
     #rec-bar { display: none; padding: 10px 14px; background: #fee2e2; color: #b91c1c; font-weight: 600; font-size: 15px; align-items: center; gap: 10px; }
     #rec-bar.status { background: #dbeafe; color: #1d4ed8; }
+    #pw-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+    .pw-box { background: white; border-radius: 16px; padding: 18px; width: 100%; max-width: 340px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    #pw-input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 10px; outline: none; }
+    .pw-box button { border: none; border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 600; }
     #btn-mic.convo { background: #475569; }
     #rec-level { flex: 1; height: 8px; background: #fecaca; border-radius: 4px; overflow: hidden; }
     #rec-level > div { height: 100%; width: 0; background: #dc2626; transition: width 0.08s; }
@@ -64,6 +68,18 @@
 </div>
 
 <div id="chat-box"></div>
+
+<div id="pw-overlay">
+  <div class="pw-box">
+    <div id="pw-title" style="font-weight:700;font-size:17px;margin-bottom:10px"></div>
+    <input id="pw-input" type="password" autocomplete="off" placeholder="Nhập mật khẩu" />
+    <div id="pw-msg" style="font-size:13px;color:#b91c1c;min-height:18px;margin:6px 0"></div>
+    <div style="display:flex;gap:8px">
+      <button id="pw-cancel" style="flex:1;background:#e2e8f0;color:#1e293b">Hủy</button>
+      <button id="pw-ok" style="flex:1;background:#16a34a;color:white">Mở</button>
+    </div>
+  </div>
+</div>
 
 <div id="preview-area">
   <img id="preview-img" src="" />
@@ -113,8 +129,57 @@
   }
 
   // ================= Giao diện =================
-  function switchMode(mode) {
+  // ===== Mật khẩu Phụ huynh (kiểm tra ở máy chủ; rời chế độ Phụ huynh là khóa lại) =====
+  let parentPw = null;
+  function askParentPw() {
+    return new Promise(resolve => {
+      const ov = document.getElementById('pw-overlay');
+      const inp = document.getElementById('pw-input');
+      const msg = document.getElementById('pw-msg');
+      const title = document.getElementById('pw-title');
+      let lanDau = false;
+      inp.value = ''; msg.textContent = '';
+      title.textContent = '🔒 Mật khẩu Phụ huynh';
+      ov.style.display = 'flex';
+      setTimeout(() => inp.focus(), 50);
+      const close = v => { ov.style.display = 'none'; ok.onclick = cancel.onclick = inp.onkeydown = null; resolve(v); };
+      const ok = document.getElementById('pw-ok'), cancel = document.getElementById('pw-cancel');
+      cancel.onclick = () => close(null);
+      inp.onkeydown = e => { if (e.key === 'Enter') ok.click(); };
+      ok.onclick = async () => {
+        const mk = inp.value;
+        if (!mk) return;
+        ok.disabled = true; msg.textContent = 'Đang kiểm tra…';
+        try {
+          if (lanDau) {
+            await api({ action: 'datMK', mk });
+            close(mk);
+          } else {
+            const j = await api({ action: 'kiemMK', mk });
+            if (j.chuaDat) {
+              lanDau = true;
+              title.textContent = '🔑 Đặt mật khẩu Phụ huynh (lần đầu)';
+              msg.textContent = 'Chưa có mật khẩu. Nhập mật khẩu mới (ít nhất 4 ký tự) rồi bấm Mở để lưu.';
+              inp.value = ''; inp.focus();
+            } else if (j.dung) close(mk);
+            else { msg.textContent = '❌ Sai mật khẩu.'; inp.value = ''; inp.focus(); }
+          }
+        } catch (e) { msg.textContent = '⚠️ ' + e.message; }
+        ok.disabled = false;
+      };
+    });
+  }
+
+  async function switchMode(mode) {
     if (mode === currentMode) return;
+    if (mode === 'phuhuynh') {
+      endConversation(); stopSpeak();
+      const mk = await askParentPw();
+      if (!mk) return;
+      parentPw = mk;
+    } else {
+      parentPw = null; // rời chế độ Phụ huynh → khóa lại
+    }
     currentMode = mode;
     history = [];
     endConversation(); stopSpeak();
@@ -459,7 +524,7 @@
 
     try {
       const j = await api({ mode: modeAtSend, text, imageBase64: sendImg, imageMime: 'image/jpeg',
-                            audioBase64, audioMime: 'audio/wav', history });
+                            audioBase64, audioMime: 'audio/wav', history, mk: modeAtSend === 'phuhuynh' ? parentPw : undefined });
       loadingDiv.remove();
       let userText = text;
       if (audioBase64) {

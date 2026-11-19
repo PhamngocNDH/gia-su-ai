@@ -15,16 +15,17 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; }
-    body { margin: 0; background: #f0f4f8; display: flex; flex-direction: column; height: 100dvh; color: #1e293b; }
+    body { margin: 0; overflow-x: hidden; width: 100%; background: #f0f4f8; display: flex; flex-direction: column; height: 100dvh; color: #1e293b; }
     header { background: #2563eb; color: white; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; display: flex; align-items: center; gap: 8px; }
-    header h1 { margin: 0; font-size: 18px; flex: 1; }
+    header h1 { margin: 0; font-size: 18px; flex: 1; min-width: 0; white-space: nowrap; }
+    header > * { flex-shrink: 0; }
     #stars { background: rgba(255,255,255,0.2); border-radius: 999px; padding: 4px 10px; font-weight: 700; font-size: 14px; }
     #stars.pop { animation: pop 0.6s; }
     @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.5); background: #fbbf24; } 100% { transform: scale(1); } }
     #btn-new { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; }
 
     .modes { display: flex; gap: 6px; padding: 8px 10px 4px; background: white; }
-    .mode-btn { flex: 1; padding: 9px 2px; border: 2px solid #cbd5e1; background: white; border-radius: 10px; font-weight: 600; font-size: 13px; color: #1e293b; }
+    .mode-btn { flex: 1 1 0; min-width: 0; line-height: 1.25; padding: 8px 2px; border: 2px solid #cbd5e1; background: white; border-radius: 10px; font-weight: 600; font-size: 13px; color: #1e293b; }
     .mode-btn.active[data-mode="lop1"] { background: #fef3c7; border-color: #f59e0b; color: #b45309; }
     .mode-btn.active[data-mode="lop4"] { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
     .mode-btn.active[data-mode="phuhuynh"] { background: #dcfce7; border-color: #22c55e; color: #15803d; }
@@ -32,7 +33,7 @@
     #chips::-webkit-scrollbar { display: none; }
     .chip { flex-shrink: 0; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 999px; padding: 7px 12px; font-size: 14px; font-weight: 600; color: #334155; }
 
-    #chat-box { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
+    #chat-box { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
     .msg { max-width: 88%; padding: 12px 14px; border-radius: 16px; line-height: 1.5; font-size: 16px; white-space: pre-wrap; word-wrap: break-word; }
     .msg.user { align-self: flex-end; background: #2563eb; color: white; border-bottom-right-radius: 4px; }
     .msg.ai { align-self: flex-start; background: white; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
@@ -86,9 +87,9 @@
 </header>
 
 <div class="modes">
-  <button class="mode-btn active" data-mode="lop1" onclick="switchMode('lop1')">🐥 Lộc · Lớp 1</button>
-  <button class="mode-btn" data-mode="lop4" onclick="switchMode('lop4')">🚀 Phát · Lớp 4</button>
-  <button class="mode-btn" data-mode="phuhuynh" onclick="switchMode('phuhuynh')">👨‍👩‍👦 Phụ huynh</button>
+  <button class="mode-btn active" data-mode="lop1" onclick="switchMode('lop1')">🐥 Lộc<br>Lớp 1</button>
+  <button class="mode-btn" data-mode="lop4" onclick="switchMode('lop4')">🚀 Phát<br>Lớp 4</button>
+  <button class="mode-btn" data-mode="phuhuynh" onclick="switchMode('phuhuynh')">👨‍👩‍👦<br>Phụ huynh</button>
 </div>
 <div id="chips"></div>
 

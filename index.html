@@ -578,6 +578,27 @@
     if (my === speakToken) setStatus('');
   }
 
+  // ===== Câu đệm: cô đáp ngay trong lúc nghĩ (tạo sẵn một lần, lưu trên máy) =====
+  const FILLERS = ['Ừ, để cô nghĩ một chút nhé.', 'Câu này hay đấy, cô xem nào.', 'Con chờ cô một lát nhé.'];
+  const fillerKey = i => 'gs_filler_v1_' + i;
+  async function prefetchFillers() {
+    for (let i = 0; i < FILLERS.length; i++) {
+      if (store.get(fillerKey(i), null)) continue;
+      try { const j = await api({ action: 'tts', text: FILLERS[i] }); store.set(fillerKey(i), j.pcm); } catch (e) { return; }
+    }
+  }
+  let lastFiller = -1;
+  function playFiller() {
+    const ready = FILLERS.map((_, i) => i).filter(i => store.get(fillerKey(i), null));
+    if (!ready.length) return;
+    let i = ready[Math.floor(Math.random() * ready.length)];
+    if (i === lastFiller && ready.length > 1) i = ready[(ready.indexOf(i) + 1) % ready.length];
+    lastFiller = i;
+    stopSpeak();
+    const my = speakToken;
+    playUrl(toWavUrl(store.get(fillerKey(i))), my).then(() => { if (my === speakToken) setStatus('🤔 Cô đang suy nghĩ…'); });
+  }
+
   // ================= Micro: TRÒ CHUYỆN LIÊN TỤC =================
   // Bấm 🎤 một lần → cô nghe → con im ~1,5 giây là tự gửi → cô trả lời và đọc → cô tự nghe tiếp.
   // Micro mở suốt cuộc trò chuyện (chỉ hỏi quyền một lần), lúc cô đang nói thì bỏ qua tiếng thu được.
@@ -745,12 +766,14 @@
     clearImage();
     setBusy(true);
     const loadingDiv = addMessage(audioBase64 ? "Cô đang nghe con nói…" : "Cô đang suy nghĩ…", 'ai');
+    if (autoSpeak && modeAtSend !== 'phuhuynh') playFiller(); else setStatus('🤔 Cô đang suy nghĩ…');
 
     try {
       const j = await api({ mode: modeAtSend, text, imageBase64: sendImg, imageMime: 'image/jpeg',
                             audioBase64, audioMime: 'audio/wav', history, docLuon: autoSpeak,
                             mk: modeAtSend === 'phuhuynh' ? parentPw : undefined });
       loadingDiv.remove();
+      if (!j.pcm) setStatus('');
       let userText = text;
       if (audioBase64) {
         userText = (j.cau_hoi || '').trim() + (text ? ' ' + text : '');
@@ -772,6 +795,7 @@
       await speakText(clean, false, j.pcm || null);
       continueConversation(modeAtSend);
     } catch (err) {
+      stopSpeak();
       loadingDiv.classList.add('err');
       loadingDiv.firstChild.textContent = "⚠️ " + (err && err.message ? err.message : err) + (/fetch|network|Load failed/i.test(String(err)) ? ' (mạng yếu? thử lại nhé)' : '');
       setBusy(false);
@@ -789,6 +813,7 @@
     renderChips(); renderStars();
     addMessage(GREETINGS[currentMode], 'ai');
     if (isLocked()) showLock();
+    setTimeout(prefetchFillers, 1500);
     api({ action: 'layCaiDat' }).then(j => { limits = { phutMoiLan: j.phutMoiLan, phutNghi: j.phutNghi }; store.set('gs_limits', limits); }).catch(() => {});
   })();
 </script>

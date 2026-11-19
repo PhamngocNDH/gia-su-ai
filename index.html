@@ -33,6 +33,8 @@
     #preview-img { height: 48px; border-radius: 6px; }
 
     #rec-bar { display: none; padding: 10px 14px; background: #fee2e2; color: #b91c1c; font-weight: 600; font-size: 15px; align-items: center; gap: 10px; }
+    #rec-bar.status { background: #dbeafe; color: #1d4ed8; }
+    #btn-mic.convo { background: #475569; }
     #rec-level { flex: 1; height: 8px; background: #fecaca; border-radius: 4px; overflow: hidden; }
     #rec-level > div { height: 100%; width: 0; background: #dc2626; transition: width 0.08s; }
 
@@ -70,9 +72,9 @@
 </div>
 
 <div id="rec-bar">
-  <span>🎙️ Cô đang nghe…</span>
+  <span id="rec-text">🎙️ Cô đang nghe con…</span>
   <div id="rec-level"><div></div></div>
-  <span style="font-weight:400;font-size:13px">Nói xong bấm 🎤</span>
+  <span id="rec-hint" style="font-weight:400;font-size:13px"></span>
 </div>
 
 <div class="voice-bar">
@@ -97,7 +99,7 @@
   let busy = false;
 
   const GREETINGS = {
-    lop1: "Chào con yêu! Con bấm nút Micro 🎤 rồi nói câu hỏi, nói xong bấm 🎤 lần nữa nhé. Hoặc bố mẹ bấm máy ảnh 📷 chụp bài tập gửi cô.",
+    lop1: "Chào con yêu! Con bấm nút Micro 🎤 một lần rồi cứ thế nói chuyện với cô nhé. Muốn dừng thì bấm 🛑. Bố mẹ có thể bấm máy ảnh 📷 chụp bài tập gửi cô.",
     lop4: "Chào con! Có bài toán hay bài tiếng Việt nào khó, bấm 🎤 kể cho cô nghe hoặc chụp ảnh 📷 bài tập nhé.",
     phuhuynh: "Chế độ Phụ huynh đã bật. Bố mẹ chụp ảnh bài tập hoặc nhập đề để xem đáp án và cách giảng nhé."
   };
@@ -115,13 +117,14 @@
     if (mode === currentMode) return;
     currentMode = mode;
     history = [];
+    endConversation(); stopSpeak();
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
     addMessage(GREETINGS[mode], 'ai');
   }
 
   function newTopic() {
     history = [];
-    stopSpeak();
+    endConversation(); stopSpeak();
     document.getElementById('chat-box').innerHTML = '';
     addMessage(GREETINGS[currentMode], 'ai');
   }
@@ -142,7 +145,11 @@
       const btn = document.createElement('button');
       btn.className = 'speak-btn';
       btn.textContent = '🔊 Nghe lại';
-      btn.onclick = () => { unlockAudio(); speakText(text, true); };
+      btn.onclick = () => {
+        unlockAudio(); cancelListening();
+        const m = currentMode;
+        speakText(text, true).then(() => continueConversation(m));
+      };
       div.appendChild(btn);
     }
     box.appendChild(div);
@@ -153,7 +160,15 @@
   function setBusy(v) {
     busy = v;
     document.getElementById('btn-send').disabled = v;
-    document.getElementById('btn-mic').disabled = v;
+    document.getElementById('btn-mic').disabled = v && !convo; // đang trò chuyện vẫn bấm 🛑 được
+  }
+
+  // Tạm thôi nghe (không gửi), giữ chế độ trò chuyện
+  function cancelListening() {
+    if (!listening) return;
+    listening = false; rec = null;
+    document.getElementById('rec-bar').style.display = 'none';
+    updateMicBtn();
   }
 
   // ================= Ảnh =================
@@ -204,6 +219,22 @@
     speakToken++;
     queue = [];
     try { player.pause(); } catch (e) {}
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+    setStatus('');
+  }
+
+  let statusTimer = null;
+  function setStatus(t, autoHideMs) {
+    const bar = document.getElementById('rec-bar');
+    clearTimeout(statusTimer);
+    if (!t) { if (!listening) bar.style.display = 'none'; return; }
+    if (listening) return; // đang nghe thì giữ thanh "Cô đang nghe"
+    bar.style.display = 'flex';
+    bar.className = 'status';
+    document.getElementById('rec-text').textContent = t;
+    document.getElementById('rec-level').style.display = 'none';
+    document.getElementById('rec-hint').textContent = '';
+    if (autoHideMs) statusTimer = setTimeout(() => setStatus(''), autoHideMs);
   }
 
   function b64ToBytes(b64) {
@@ -224,55 +255,141 @@
     return URL.createObjectURL(new Blob([h, pcm], { type: 'audio/wav' }));
   }
 
-  // Chia đoạn ~250 ký tự theo câu: đoạn đầu ngắn để nghe sớm, các đoạn sau tải trước
+  // Đọc cả câu trả lời trong MỘT lần tạo giọng để giữ đúng một giọng.
+  // Chỉ câu rất dài (chế độ Phụ huynh) mới chia theo đoạn văn, mỗi phần ≤ 900 ký tự.
   function splitChunks(text) {
-    const sents = text.replace(/•/g, '').match(/[^.!?\n]+[.!?]*/g) || [text];
+    text = text.replace(/•/g, '').trim();
+    if (text.length <= 900) return [text];
+    const paras = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
     const out = []; let cur = '';
-    sents.map(s => s.trim()).filter(Boolean).forEach(s => {
-      const lim = out.length === 0 ? 120 : 260;
-      if ((cur + ' ' + s).length > lim && cur) { out.push(cur); cur = s; } else cur = cur ? cur + ' ' + s : s;
+    paras.forEach(p => {
+      if (cur && (cur + '\n' + p).length > 900) { out.push(cur); cur = p; } else cur = cur ? cur + '\n' + p : p;
     });
     if (cur) out.push(cur);
     return out;
   }
 
+  // Trả về khi đọc xong (hoặc bị dừng)
   async function speakText(text, force = false) {
     if (!force && !document.getElementById('auto-speak').checked) return;
     stopSpeak();
     const my = speakToken;
     const chunks = splitChunks(text);
-    // tải tối đa 2 đoạn song song, phát lần lượt
     const jobs = chunks.map(() => null);
     const load = i => jobs[i] || (jobs[i] = api({ action: 'tts', text: chunks[i] }).then(j => toWavUrl(j.pcm)));
+    setStatus('🔊 Cô đang chuẩn bị đọc…');
     for (let i = 0; i < chunks.length; i++) {
       if (my !== speakToken) return;
       let url;
       try { load(i); if (i + 1 < chunks.length) load(i + 1); url = await jobs[i]; }
-      catch (e) { if (my === speakToken) fallbackSpeak(chunks.slice(i).join(' ')); return; }
+      catch (e) { if (my === speakToken) setStatus('⚠️ Chưa đọc được, bấm 🔊 Nghe lại nhé', 4000); return; }
       if (my !== speakToken) return;
+      setStatus('🔊 Cô đang nói…');
       await new Promise(res => {
-        player.onended = res; player.onerror = res;
+        player.onended = res; player.onerror = res; player.onpause = res;
         player.src = url;
         const p = player.play();
         if (p) p.catch(() => res());
       });
       URL.revokeObjectURL(url);
     }
+    if (my === speakToken) setStatus('');
   }
 
-  // Dự phòng khi máy chủ không đọc được: dùng giọng có sẵn của máy
-  function fallbackSpeak(text) {
-    if (!('speechSynthesis' in window)) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'vi-VN';
-    window.speechSynthesis.speak(u);
+  // ================= Micro: TRÒ CHUYỆN LIÊN TỤC =================
+  // Bấm 🎤 một lần → cô nghe → con im ~1,5 giây là tự gửi → cô trả lời và đọc → cô tự nghe tiếp.
+  // Micro mở suốt cuộc trò chuyện (chỉ hỏi quyền một lần), lúc cô đang nói thì bỏ qua tiếng thu được.
+  // Bấm 🛑 để dừng; con im lặng 10 giây thì cô tự dừng.
+  let mic = null;        // {stream, ctx, src, node, rate}
+  let convo = false;     // đang ở chế độ trò chuyện
+  let listening = false; // đang thu câu nói của con
+  let rec = null;        // {chunks[], start, heard, quietSince, loudFrames}
+
+  function updateMicBtn() {
+    const b = document.getElementById('btn-mic');
+    b.classList.toggle('listening', listening);
+    b.classList.toggle('convo', convo && !listening);
+    b.textContent = convo ? (listening ? '🎤' : '🛑') : '🎤';
   }
 
-  // ================= Micro: ghi âm WAV 16 kHz, gửi cho Gemini nghe =================
-  let rec = null; // {stream, ctx, node, src, chunks[], rate, timer, silenceAt, heard}
+  async function ensureMic() {
+    if (mic) return;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    const node = ctx.createScriptProcessor(4096, 1, 1);
+    node.onaudioprocess = onAudio;
+    src.connect(node); node.connect(ctx.destination);
+    mic = { stream, ctx, src, node, rate: ctx.sampleRate };
+  }
+
+  function releaseMic() {
+    if (!mic) return;
+    try { mic.node.disconnect(); mic.src.disconnect(); } catch (e) {}
+    mic.stream.getTracks().forEach(t => t.stop());
+    try { mic.ctx.close(); } catch (e) {}
+    mic = null;
+  }
+
+  function onAudio(ev) {
+    if (!listening || !rec) return;
+    const d = ev.inputBuffer.getChannelData(0);
+    rec.chunks.push(new Float32Array(d));
+    let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
+    const rms = Math.sqrt(s / (d.length / 4));
+    document.querySelector('#rec-level > div').style.width = Math.min(100, rms * 600) + '%';
+    const now = Date.now();
+    if (rms > 0.03) { rec.loudFrames++; if (rec.loudFrames >= 2) rec.heard = true; rec.quietSince = 0; }
+    else if (rec.heard) { rec.quietSince = rec.quietSince || now; if (now - rec.quietSince > 1500) stopListening(true); }
+    if (listening && now - rec.start > 30000) stopListening(true);                 // nói tối đa 30 giây
+    if (listening && !rec.heard && now - rec.start > 10000) stopListening(false, true); // 10 giây im lặng
+  }
+
+  function startListening() {
+    if (!convo || !mic || busy) return;
+    stopSpeak();
+    try { mic.ctx.resume(); } catch (e) {}
+    rec = { chunks: [], start: Date.now(), heard: false, quietSince: 0, loudFrames: 0 };
+    listening = true;
+    const bar = document.getElementById('rec-bar');
+    bar.className = '';
+    bar.style.display = 'flex';
+    document.getElementById('rec-text').textContent = '🎙️ Cô đang nghe con…';
+    document.getElementById('rec-level').style.display = '';
+    document.getElementById('rec-hint').textContent = 'Nói xong con im một chút';
+    updateMicBtn();
+  }
+
+  function stopListening(send, silent) {
+    if (!listening) return;
+    listening = false;
+    const r = rec; rec = null;
+    document.getElementById('rec-bar').style.display = 'none';
+    updateMicBtn();
+    if (silent) {
+      endConversation();
+      addMessage("Cô chờ con nhé. Khi nào con muốn hỏi tiếp thì bấm 🎤.", 'ai');
+      return;
+    }
+    if (send && r && r.heard) sendMessage(encodeWav16k(r.chunks, mic ? mic.rate : 48000));
+  }
+
+  function endConversation() {
+    convo = false;
+    if (listening) { listening = false; rec = null; document.getElementById('rec-bar').style.display = 'none'; }
+    releaseMic();
+    updateMicBtn();
+  }
+
   async function toggleMic() {
     unlockAudio();
-    if (rec) { stopRecording(true); return; }
+    if (convo) {
+      // Đang nghe mà con đã nói → gửi luôn; còn lại → dừng trò chuyện
+      if (listening && rec && rec.heard) { stopListening(true); return; }
+      endConversation(); stopSpeak(); return;
+    }
     if (busy) return;
     stopSpeak();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -280,45 +397,20 @@
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
-      await ctx.resume();
-      const src = ctx.createMediaStreamSource(stream);
-      const node = ctx.createScriptProcessor(4096, 1, 1);
-      rec = { stream, ctx, src, node, chunks: [], rate: ctx.sampleRate, start: Date.now(), heard: false, quietSince: 0 };
-      node.onaudioprocess = ev => {
-        if (!rec) return;
-        const d = ev.inputBuffer.getChannelData(0);
-        rec.chunks.push(new Float32Array(d));
-        let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
-        const rms = Math.sqrt(s / (d.length / 4));
-        document.querySelector('#rec-level > div').style.width = Math.min(100, rms * 600) + '%';
-        const now = Date.now();
-        if (rms > 0.03) { rec.heard = true; rec.quietSince = 0; }
-        else if (rec.heard) { rec.quietSince = rec.quietSince || now; if (now - rec.quietSince > 1800) stopRecording(true); }
-        if (now - rec.start > 30000) stopRecording(true);           // tối đa 30 giây
-        if (!rec.heard && now - rec.start > 8000) stopRecording(false, true); // 8 giây im lặng
-      };
-      src.connect(node); node.connect(ctx.destination);
-      document.getElementById('btn-mic').classList.add('listening');
-      document.getElementById('rec-bar').style.display = 'flex';
+      await ensureMic();
+      convo = true;
+      startListening();
     } catch (e) {
-      addMessage("Chưa mở được Micro. Nếu máy hỏi quyền dùng micro thì con bấm \"Cho phép\" nhé, rồi bấm 🎤 lại.", 'ai', null, false).classList.add('err');
+      endConversation();
+      addMessage("Chưa mở được Micro. Nếu máy hỏi quyền dùng micro thì con bấm \"Cho phép\" nhé, rồi bấm 🎤 lại.", 'ai').classList.add('err');
     }
   }
 
-  function stopRecording(send, silent) {
-    if (!rec) return;
-    const r = rec; rec = null;
-    try { r.node.disconnect(); r.src.disconnect(); } catch (e) {}
-    r.stream.getTracks().forEach(t => t.stop());
-    try { r.ctx.close(); } catch (e) {}
-    document.getElementById('btn-mic').classList.remove('listening');
-    document.getElementById('rec-bar').style.display = 'none';
-    if (silent) { addMessage("Cô chưa nghe thấy gì, con bấm 🎤 rồi nói to hơn nhé.", 'ai'); return; }
-    if (!send || !r.heard) return;
-    sendMessage(encodeWav16k(r.chunks, r.rate));
+  // Sau khi cô trả lời xong (đã đọc xong) thì tự nghe tiếp
+  function continueConversation(modeAtSend) {
+    if (!convo) return;
+    if (modeAtSend !== currentMode) { endConversation(); return; }
+    setTimeout(startListening, 350); // chờ dứt tiếng loa để micro khỏi thu tiếng cô
   }
 
   function encodeWav16k(chunks, inRate) {
@@ -352,6 +444,7 @@
     const input = document.getElementById('text-input');
     const text = input.value.trim();
     if (!text && !imageBase64 && !audioBase64) return;
+    if (!audioBase64) cancelListening(); // gõ chữ/gửi ảnh giữa lúc đang nghe
     stopSpeak();
 
     const previewSrc = imageBase64 ? document.getElementById('preview-img').src : null;
@@ -384,12 +477,14 @@
       }
       const clean = cleanMd(j.tra_loi);
       addMessage(clean, 'ai', null, true);
-      speakText(clean);
+      setBusy(false);
+      await speakText(clean);
+      continueConversation(modeAtSend);
     } catch (err) {
       loadingDiv.classList.add('err');
       loadingDiv.firstChild.textContent = "⚠️ " + (err && err.message ? err.message : err) + (/fetch|network|Load failed/i.test(String(err)) ? ' (mạng yếu? thử lại nhé)' : '');
-    } finally {
       setBusy(false);
+      continueConversation(modeAtSend);
     }
   }
 

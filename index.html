@@ -580,8 +580,9 @@
 
   // ===== Câu đệm: cô đáp ngay trong lúc nghĩ (tạo sẵn một lần, lưu trên máy) =====
   const FILLERS = ['Ừ, để cô nghĩ một chút nhé.', 'Câu này hay đấy, cô xem nào.', 'Con chờ cô một lát nhé.'];
-  const fillerKey = i => 'gs_filler_v1_' + i;
+  const fillerKey = i => 'gs_filler_v2_' + i;
   async function prefetchFillers() {
+    try { for (let i = 0; i < 5; i++) localStorage.removeItem('gs_filler_v1_' + i); } catch (e) {}
     for (let i = 0; i < FILLERS.length; i++) {
       if (store.get(fillerKey(i), null)) continue;
       try { const j = await api({ action: 'tts', text: FILLERS[i] }); store.set(fillerKey(i), j.pcm); } catch (e) { return; }
